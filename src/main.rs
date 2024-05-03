@@ -1,60 +1,27 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
-use serde_json::json;
 use warp::Filter;
+mod character;
+mod dice;
 
 #[tokio::main]
 async fn main() {
-    let webhook = warp::post()
-        .and(warp::path("webhook"))
-        .and(warp::body::json())
-        .map(|body: serde_json::Value| {
-            println!("You have sent: {:#?}", body);
-            warp::log("Received request");
-            warp::reply::json(&body)
-        });
+    let rolls = dice::Roll::new();
+    dbg!(rolls.roll(dice::DiceKind::Fate, None, None));
+    dbg!(rolls.roll(dice::DiceKind::Faced, Some(2), None));
 
-    let actions = vec![
-        character::Action::new("Create a character", "character/form"),
-        character::Action::new("Submit a Character", "character/submit"),
-    ];
+    let char_menu = Arc::new(character::Menu::new());
+    let fate_menu = Arc::new(dice::Menu::new());
 
-    let menu = Arc::new(character::Menu::new(actions));
     let character_menu_route = warp::get()
         .and(warp::path("character"))
-        .map(move || warp::reply::json(&*menu.clone()));
+        .map(move || warp::reply::json(&*char_menu.clone()));
 
-    let routes = character_menu_route.or(webhook);
+    let fate_menu_route = warp::get()
+        .and(warp::path("dice"))
+        .map(move || warp::reply::json(&fate_menu.clone()));
+
+    let routes = character_menu_route.or(fate_menu_route);
+
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
-}
-
-mod character {
-    use serde::{Deserialize, Serialize};
-    use std::sync::Arc;
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub(crate) struct Action {
-        name: Arc<String>,
-        path: Arc<String>,
-    }
-
-    #[derive(Serialize, Deserialize, Debug)]
-    pub(crate) struct Menu {
-        actions: Vec<Action>,
-    }
-
-    impl Action {
-        pub(crate) fn new(name: &str, path: &str) -> Self {
-            Action {
-                name: Arc::new(name.to_string()),
-                path: Arc::new(path.to_string()),
-            }
-        }
-    }
-
-    impl Menu {
-        pub(crate) fn new(actions: Vec<Action>) -> Self {
-            Menu { actions }
-        }
-    }
 }
