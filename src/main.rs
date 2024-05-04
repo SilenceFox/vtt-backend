@@ -6,6 +6,8 @@ mod dice;
 
 #[tokio::main]
 async fn main() {
+    env_logger::builder().filter_level(LevelFilter::Info).init();
+
     let rolls = dice::Roll::new();
     dbg!(rolls.roll(dice::DiceKind::Fate, None, None));
     dbg!(rolls.roll(dice::DiceKind::Faced, Some(2), None));
@@ -24,4 +26,5 @@ async fn main() {
     let routes = character_menu_route.or(fate_menu_route);
 
     warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
