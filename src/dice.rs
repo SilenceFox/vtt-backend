@@ -72,7 +72,6 @@ pub(crate) struct Action {
 pub(crate) struct Menu {
     actions: Vec<Action>,
 }
-
 impl Action {
     pub(crate) fn new(name: &str, path: &str) -> Self {
         Action {
@@ -83,6 +82,7 @@ impl Action {
     pub(crate) fn faced_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
         let post = warp::path("dice")
             .and(warp::path("faced"))
+            .and(warp::path::end())
             .and(warp::post())
             .and(warp::header::optional::<i32>("range"))
             .and(warp::header::optional::<i32>("times"))
@@ -120,6 +120,7 @@ impl Routable for Menu {
         let menu = json!(Self::new());
         let route = warp::get()
             .and(warp::path("dice"))
+            .and(warp::path::end())
             .map(move || warp::reply::json(&menu));
         route
     }

@@ -9,9 +9,6 @@ use log::{error, info, LevelFilter};
 async fn main() {
     env_logger::builder().filter_level(LevelFilter::Info).init();
 
-    let rolls = dice::Roll::new();
-    dbg!(rolls.roll(dice::DiceKind::Fate, None, None));
-    dbg!(rolls.roll(dice::DiceKind::Faced, Some(2), None));
     let dice_routes = dice::Menu::menu_routes();
     let faced_roll = dice::Action::faced_roll();
     let character_routes = character::Menu::menu_routes();
