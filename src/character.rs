@@ -1,13 +1,17 @@
+use crate::routable::Routable;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use warp::{reject::Rejection, reply::Reply, Filter};
 use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug)]
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct Action {
     name: Arc<String>,
     path: Arc<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub(crate) struct Menu {
     actions: Vec<Action>,
 }
@@ -32,3 +36,12 @@ impl Menu {
     }
 }
 
+impl Routable for Menu {
+    fn menu_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+         let menu = json!(Self::new());
+         let route = warp::get()
+             .and(warp::path("character"))
+             .map(move || warp::reply::json(&menu));
+         route
+    }
+}

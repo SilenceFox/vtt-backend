@@ -1,8 +1,15 @@
-use std::sync::Arc;
-
+use log::error;
 use rand::prelude::*;
 use rand::thread_rng as rng;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::sync::Arc;
+use warp::reject::Reject;
+use warp::reject::Rejection;
+use warp::reply::Reply;
+use warp::Filter;
+
+use crate::routable::Routable;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Roll(i32);
@@ -23,17 +30,9 @@ impl Roll {
         Roll(0)
     }
     pub fn roll(&self, dice: DiceKind, range: Option<i32>, times: Option<i32>) -> RollResult {
-        let int_range = match range {
-            Some(range) => range,
-            None => 1,
-        };
-        let roll_times = match times {
-            Some(x) => x,
-            None => 1,
-        };
         match dice {
             DiceKind::Fate => self.fate_roll(),
-            DiceKind::Faced => self.faced_roll(int_range, roll_times),
+            DiceKind::Faced => self.faced_roll(range.unwrap_or(20), times.unwrap_or(1)),
         }
     }
     fn fate_roll(&self) -> RollResult {
@@ -81,11 +80,47 @@ impl Action {
             path: Arc::new(String::from("/dice/") + path),
         }
     }
+    pub(crate) fn faced_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        let post = warp::path("dice")
+            .and(warp::path("faced"))
+            .and(warp::post())
+            .and(warp::header::optional::<i32>("range"))
+            .and(warp::header::optional::<i32>("times"))
+            .and_then(|range: Option<i32>, times: Option<i32>| async move {
+                #[derive(Debug)]
+                struct InvalidRangeError;
+                impl Reject for InvalidRangeError {}
+                if range <= Some(200) && times <= Some(50) {
+                    Ok((range, times))
+                } else {
+                    error!("Tried to roll with invalid range or times");
+                    Err(warp::reject::custom(InvalidRangeError))
+                }
+            })
+            .map(|(range, times)| {
+                let roll = Roll::new().roll(DiceKind::Faced, range, times);
+                warp::reply::json(&roll)
+            });
+        post
+    }
 }
 
 impl Menu {
     pub(crate) fn new() -> Self {
-        let actions: Vec<Action> = vec![Action::new("Fate", "fate"), Action::new("Faced", "faced")];
+        let actions: Vec<Action> = vec![
+            Action::new("Roll for FATE Dices", "fate"),
+            Action::new("Roll for Faced Dices (D20, D12...)", "faced"),
+        ];
         Menu { actions }
+    }
+}
+
+impl Routable for Menu {
+    fn menu_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        let menu = json!(Self::new());
+        let route = warp::get()
+            .and(warp::path("dice"))
+            .map(move || warp::reply::json(&menu));
+        route
     }
 }
