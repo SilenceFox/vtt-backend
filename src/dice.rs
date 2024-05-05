@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use log::error;
 use rand::prelude::*;
 use rand::thread_rng as rng;
@@ -25,6 +26,17 @@ pub enum RollResult {
     FateRollResult(Vec<Roll>),
 }
 
+#[derive(Debug)]
+enum ErrorReply {
+    InvalidRange(Arc<str>),
+    // NotEnoughArguments,
+    // TooManyArguments,
+    // InvalidDiceKind,
+    // ArgumentNotNumber,
+    // CantParse,
+}
+impl Reject for ErrorReply {}
+
 impl Roll {
     pub fn new() -> Self {
         Roll(0)
@@ -39,13 +51,8 @@ impl Roll {
         let mut rng = rand::thread_rng();
         let rolls: Vec<Roll> = (0..4)
             .map(|_| {
-                let roll_value = rng.gen_range(1..=3);
-                match roll_value {
-                    1 => Roll(-1),
-                    2 => Roll(0),
-                    3 => Roll(1),
-                    _ => unreachable!(), // This should never happen
-                }
+                let roll_value = rng.gen_range(-1..=1);
+                Roll(roll_value)
             })
             .collect();
         RollResult::FateRollResult(rolls)
@@ -87,18 +94,44 @@ impl Action {
             .and(warp::header::optional::<i32>("range"))
             .and(warp::header::optional::<i32>("times"))
             .and_then(|range: Option<i32>, times: Option<i32>| async move {
-                #[derive(Debug)]
-                struct InvalidRangeError;
-                impl Reject for InvalidRangeError {}
                 if range <= Some(200) && times <= Some(50) {
                     Ok((range, times))
                 } else {
                     error!("Tried to roll with invalid range or times");
-                    Err(warp::reject::custom(InvalidRangeError))
+                    Err(warp::reject::custom(ErrorReply::InvalidRange(
+                        "Please provide appropriate headers,\
+                        `range` cant exceed 200,\
+                            `times` cant exceed 50"
+                            .into(),
+                    )))
                 }
             })
             .map(|(range, times)| {
                 let roll = Roll::new().roll(DiceKind::Faced, range, times);
+                warp::reply::json(&roll)
+            });
+        post
+    }
+    pub(crate) fn fate_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+        let post = warp::path("dice")
+            .and(warp::path("fate"))
+            .and(warp::path::end())
+            .and(warp::post())
+            .and(warp::header::optional::<i32>("times"))
+            .and_then(|times: Option<i32>| async move {
+                if times <= Some(4) {
+                    Ok(times)
+                } else {
+                    error!("Does not support rolling more than 4 times");
+                    Err(warp::reject::custom(ErrorReply::InvalidRange(
+                        "Please provide appropriate headers,\
+                            `times` cant exceed 4"
+                            .into(),
+                    )))
+                }
+            })
+            .map(|times| {
+                let roll = Roll::new().roll(DiceKind::Fate, None, times);
                 warp::reply::json(&roll)
             });
         post
