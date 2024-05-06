@@ -1,6 +1,6 @@
-use std::{sync::Arc, time};
+use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use log::info;
 
 /// This module is focused on the CHAT API endpoint.
@@ -11,7 +11,7 @@ use log::info;
 #[derive(Debug)]
 pub(crate) struct Chat {
     users: Vec<User>,
-    message: Vec<Message>,
+    messages: Vec<Message>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,8 +30,8 @@ impl Chat {
     pub fn new() -> Self {
         Self::new_chat(Vec::new(), Vec::new())
     }
-    fn new_chat(users: Vec<User>, message: Vec<Message>) -> Self {
-        Self { users, message }
+    fn new_chat(users: Vec<User>, messages: Vec<Message>) -> Self {
+        Self { users, messages }
     }
     fn user_join(new_user: User) {
         todo!()
@@ -40,10 +40,11 @@ impl Chat {
         todo!()
     }
     fn add_to_history(&mut self, msg: Message) {
-        self.message.push(msg);
+        self.messages.push(msg);
     }
     pub fn get_history(&self) {
-        for msg in &self.message {
+        // TODO: Truncate the history to 50 messages
+        for msg in &self.messages {
             println!("");
             let formatted = format!(
                 "=========\nTime: {} \n {}: {}\n=========",
@@ -55,7 +56,6 @@ impl Chat {
         }
     }
     pub(crate) fn send_message(&mut self, user: Arc<User>, msg: String) {
-        let user = user.clone();
         let message = Message::new_message(user, msg);
         self.add_to_history(message)
     }
