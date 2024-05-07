@@ -1,16 +1,11 @@
 #![allow(dead_code, unused_variables)]
-use std::{
-    ops::Deref,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use crate::routable::Routable;
+use axum::{routing::get, Router};
 use chat::{handle_user_join, handle_user_leave, handle_user_send_message};
-use warp::Filter;
 mod character;
 pub mod chat;
 mod dice;
-mod routable;
 use log::{error, info, LevelFilter};
 
 #[tokio::main]
@@ -30,26 +25,18 @@ async fn main() {
         "What is love".to_string(),
         &chat_state,
     );
-    handle_user_send_message(
-        &get_my_user(&chat_state),
-        "Baby dont hurt me".to_string(),
-        &chat_state,
-    );
-    handle_user_send_message(
-        &get_my_user(&chat_state),
-        "Dont hurt me".to_string(),
-        &chat_state,
-    );
-    handle_user_send_message(
-        &get_my_user(&chat_state),
-        "No more".to_string(),
-        &chat_state,
-    );
     handle_user_leave(&get_my_user(&chat_state), &chat_state);
-    let dice_routes = dice::Menu::menu_routes();
-    let rolls = dice::Action::faced_roll().or(dice::Action::fate_roll());
-    let character_routes = character::Menu::menu_routes();
-    let routes = character_routes.or(dice_routes).or(rolls);
 
-    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
+    let app = Router::new().route("/dice", get(dice::menu_routes));
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+
+    // let dice_routes = dice::Menu::menu_routes();
+    // let rolls = dice::Action::faced_roll().or(dice::Action::fate_roll());
+    // let character_routes = character::Menu::menu_routes();
+    // let routes = character_routes.or(dice_routes).or(rolls);
+    //
+    // warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
+    //
 }

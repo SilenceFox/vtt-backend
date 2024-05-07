@@ -1,16 +1,11 @@
 #![allow(dead_code)]
+use axum::Json;
 use log::error;
 use rand::prelude::*;
 use rand::thread_rng as rng;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
-use warp::reject::Reject;
-use warp::reject::Rejection;
-use warp::reply::Reply;
-use warp::Filter;
-
-use crate::routable::Routable;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Roll(i32);
@@ -35,7 +30,6 @@ enum ErrorReply {
     // ArgumentNotNumber,
     // CantParse,
 }
-impl Reject for ErrorReply {}
 
 impl Roll {
     pub fn new() -> Self {
@@ -86,56 +80,56 @@ impl Action {
             path: Arc::new(String::from("/dice/") + path),
         }
     }
-    pub(crate) fn faced_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        let post = warp::path("dice")
-            .and(warp::path("faced"))
-            .and(warp::path::end())
-            .and(warp::post())
-            .and(warp::header::optional::<i32>("range"))
-            .and(warp::header::optional::<i32>("times"))
-            .and_then(|range: Option<i32>, times: Option<i32>| async move {
-                if range <= Some(200) && times <= Some(50) {
-                    Ok((range, times))
-                } else {
-                    error!("Tried to roll with invalid range or times");
-                    Err(warp::reject::custom(ErrorReply::InvalidRange(
-                        "Please provide appropriate headers,\
-                        `range` cant exceed 200,\
-                            `times` cant exceed 50"
-                            .into(),
-                    )))
-                }
-            })
-            .map(|(range, times)| {
-                let roll = Roll::new().roll(DiceKind::Faced, range, times);
-                warp::reply::json(&roll)
-            });
-        post
-    }
-    pub(crate) fn fate_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        let post = warp::path("dice")
-            .and(warp::path("fate"))
-            .and(warp::path::end())
-            .and(warp::post())
-            .and(warp::header::optional::<i32>("times"))
-            .and_then(|times: Option<i32>| async move {
-                if times <= Some(4) {
-                    Ok(times)
-                } else {
-                    error!("Does not support rolling more than 4 times");
-                    Err(warp::reject::custom(ErrorReply::InvalidRange(
-                        "Please provide appropriate headers,\
-                            `times` cant exceed 4"
-                            .into(),
-                    )))
-                }
-            })
-            .map(|times| {
-                let roll = Roll::new().roll(DiceKind::Fate, None, times);
-                warp::reply::json(&roll)
-            });
-        post
-    }
+    // pub(crate) fn faced_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    //     let post = warp::path("dice")
+    //         .and(warp::path("faced"))
+    //         .and(warp::path::end())
+    //         .and(warp::post())
+    //         .and(warp::header::optional::<i32>("range"))
+    //         .and(warp::header::optional::<i32>("times"))
+    //         .and_then(|range: Option<i32>, times: Option<i32>| async move {
+    //             if range <= Some(200) && times <= Some(50) {
+    //                 Ok((range, times))
+    //             } else {
+    //                 error!("Tried to roll with invalid range or times");
+    //                 Err(warp::reject::custom(ErrorReply::InvalidRange(
+    //                     "Please provide appropriate headers,\
+    //                     `range` cant exceed 200,\
+    //                         `times` cant exceed 50"
+    //                         .into(),
+    //                 )))
+    //             }
+    //         })
+    //         .map(|(range, times)| {
+    //             let roll = Roll::new().roll(DiceKind::Faced, range, times);
+    //             warp::reply::json(&roll)
+    //         });
+    //     post
+    // }
+    // pub(crate) fn fate_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    //     let post = warp::path("dice")
+    //         .and(warp::path("fate"))
+    //         .and(warp::path::end())
+    //         .and(warp::post())
+    //         .and(warp::header::optional::<i32>("times"))
+    //         .and_then(|times: Option<i32>| async move {
+    //             if times <= Some(4) {
+    //                 Ok(times)
+    //             } else {
+    //                 error!("Does not support rolling more than 4 times");
+    //                 Err(warp::reject::custom(ErrorReply::InvalidRange(
+    //                     "Please provide appropriate headers,\
+    //                         `times` cant exceed 4"
+    //                         .into(),
+    //                 )))
+    //             }
+    //         })
+    //         .map(|times| {
+    //             let roll = Roll::new().roll(DiceKind::Fate, None, times);
+    //             warp::reply::json(&roll)
+    //         });
+    //     post
+    // }
 }
 
 impl Menu {
@@ -148,13 +142,9 @@ impl Menu {
     }
 }
 
-impl Routable for Menu {
-    fn menu_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-        let menu = json!(Self::new());
-        let route = warp::get()
-            .and(warp::path("dice"))
-            .and(warp::path::end())
-            .map(move || warp::reply::json(&menu));
-        route
-    }
+pub(crate) async fn menu_routes() -> Json<serde_json::Value> {
+    let menu = Menu::new();
+    Json(json!(menu))
+
+    // Retornar um JSON com as rotas do /dice
 }

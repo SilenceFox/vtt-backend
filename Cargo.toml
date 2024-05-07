@@ -1,11 +1,13 @@
 [package]
-name = "warp-back"
+name = "vtt-baxum"
+description = "Axum REST API for my VTT project, caution, bad code ahead."
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+axum = "0.7.5"
 chrono = "0.4.38"
 chrono-tz = "0.9.0"
 env_logger = "0.11.3"
@@ -14,4 +16,3 @@ rand = { version = "0.8.5", features = ["serde"] }
 serde = { version = "1.0.200", features = ["derive", "rc"] }
 serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["full"] }
-warp = "0.3.7"
