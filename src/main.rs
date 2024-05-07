@@ -1,4 +1,11 @@
+#![allow(dead_code, unused_variables)]
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
+
 use crate::routable::Routable;
+use chat::{handle_user_join, handle_user_leave, handle_user_send_message};
 use warp::Filter;
 mod character;
 pub mod chat;
@@ -10,27 +17,35 @@ use log::{error, info, LevelFilter};
 async fn main() {
     env_logger::builder().filter_level(LevelFilter::Info).init();
 
-    let mut chat = chat::Chat::new();
-    let user1 = chat::User::new_user("user1".to_string());
-    let user2 = chat::User::new_user("user2".to_string());
-
-    macro_rules! msg {
-        ($user:expr, $message:expr) => {{
-            let user_arc = $user.clone();
-            chat.send_message(user_arc, $message.to_string())
-        }};
-    }
-
-    chat.send_message(user1, "Salve".to_string());
-    chat.send_message(user2.clone(), "Eita bicho mensagem KKKKKKKKKK".to_string());
-    msg!(user2, "Whats up");
-
-    dbg!(&chat);
-    println!("");
-    println!("");
-    println!("");
-    chat.get_history();
-
+    let chat_state = Arc::new(Mutex::new(chat::Chat::new()));
+    handle_user_join(String::from("Joao"), &chat_state);
+    let get_my_user = |state: &Arc<Mutex<chat::Chat>>| -> Arc<chat::User> {
+        let chat = state.lock().unwrap();
+        let my_user = chat.get_your_user("Joao").unwrap();
+        my_user.clone()
+    };
+    handle_user_send_message(&get_my_user(&chat_state), "Yoooo".to_string(), &chat_state);
+    handle_user_send_message(
+        &get_my_user(&chat_state),
+        "What is love".to_string(),
+        &chat_state,
+    );
+    handle_user_send_message(
+        &get_my_user(&chat_state),
+        "Baby dont hurt me".to_string(),
+        &chat_state,
+    );
+    handle_user_send_message(
+        &get_my_user(&chat_state),
+        "Dont hurt me".to_string(),
+        &chat_state,
+    );
+    handle_user_send_message(
+        &get_my_user(&chat_state),
+        "No more".to_string(),
+        &chat_state,
+    );
+    handle_user_leave(&get_my_user(&chat_state), &chat_state);
     let dice_routes = dice::Menu::menu_routes();
     let rolls = dice::Action::faced_roll().or(dice::Action::fate_roll());
     let character_routes = character::Menu::menu_routes();
