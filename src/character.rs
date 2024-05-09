@@ -32,14 +32,3 @@ impl Menu {
         Menu { actions }
     }
 }
-
-// impl Routable for Menu {
-//     fn menu_routes() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-//         let menu = json!(Self::new());
-//         let route = warp::get()
-//             .and(warp::path("character"))
-//             .and(warp::path::end())
-//             .map(move || warp::reply::json(&menu));
-//         route
-//     }
-// }
