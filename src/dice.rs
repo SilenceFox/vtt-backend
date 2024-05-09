@@ -1,6 +1,10 @@
 #![allow(dead_code)]
-use axum::Json;
-use log::error;
+use axum::{
+    http::HeaderMap,
+    routing::{get, post},
+    Json, Router,
+};
+use log::{error, info};
 use rand::prelude::*;
 use rand::thread_rng as rng;
 use serde::{Deserialize, Serialize};
@@ -19,16 +23,6 @@ pub enum DiceKind {
 pub enum RollResult {
     FacedRollResult(Vec<Roll>),
     FateRollResult(Vec<Roll>),
-}
-
-#[derive(Debug)]
-enum ErrorReply {
-    InvalidRange(Arc<str>),
-    // NotEnoughArguments,
-    // TooManyArguments,
-    // InvalidDiceKind,
-    // ArgumentNotNumber,
-    // CantParse,
 }
 
 impl Roll {
@@ -67,6 +61,7 @@ impl Roll {
 pub(crate) struct Action {
     name: Arc<String>,
     path: Arc<String>,
+    method: (String, String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -74,77 +69,85 @@ pub(crate) struct Menu {
     actions: Vec<Action>,
 }
 impl Action {
-    pub(crate) fn new(name: &str, path: &str) -> Self {
+    fn new(name: &str, path: &str, method: (&str, &str)) -> Self {
         Action {
             name: Arc::new(name.to_string()),
             path: Arc::new(String::from("/dice/") + path),
+            method: (String::from(method.0), String::from(method.1)),
         }
     }
-    // pub(crate) fn faced_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    //     let post = warp::path("dice")
-    //         .and(warp::path("faced"))
-    //         .and(warp::path::end())
-    //         .and(warp::post())
-    //         .and(warp::header::optional::<i32>("range"))
-    //         .and(warp::header::optional::<i32>("times"))
-    //         .and_then(|range: Option<i32>, times: Option<i32>| async move {
-    //             if range <= Some(200) && times <= Some(50) {
-    //                 Ok((range, times))
-    //             } else {
-    //                 error!("Tried to roll with invalid range or times");
-    //                 Err(warp::reject::custom(ErrorReply::InvalidRange(
-    //                     "Please provide appropriate headers,\
-    //                     `range` cant exceed 200,\
-    //                         `times` cant exceed 50"
-    //                         .into(),
-    //                 )))
-    //             }
-    //         })
-    //         .map(|(range, times)| {
-    //             let roll = Roll::new().roll(DiceKind::Faced, range, times);
-    //             warp::reply::json(&roll)
-    //         });
-    //     post
-    // }
-    // pub(crate) fn fate_roll() -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    //     let post = warp::path("dice")
-    //         .and(warp::path("fate"))
-    //         .and(warp::path::end())
-    //         .and(warp::post())
-    //         .and(warp::header::optional::<i32>("times"))
-    //         .and_then(|times: Option<i32>| async move {
-    //             if times <= Some(4) {
-    //                 Ok(times)
-    //             } else {
-    //                 error!("Does not support rolling more than 4 times");
-    //                 Err(warp::reject::custom(ErrorReply::InvalidRange(
-    //                     "Please provide appropriate headers,\
-    //                         `times` cant exceed 4"
-    //                         .into(),
-    //                 )))
-    //             }
-    //         })
-    //         .map(|times| {
-    //             let roll = Roll::new().roll(DiceKind::Fate, None, times);
-    //             warp::reply::json(&roll)
-    //         });
-    //     post
-    // }
+
+    pub(crate) async fn faced_roll(headers: HeaderMap) -> Json<RollResult> {
+        // How many times to roll
+        let times = headers
+            .get("times")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<i32>().ok())
+            .or(Some(1));
+
+        // Dice roll range, D20, D12...
+        let range = headers
+            .get("range")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<i32>().ok())
+            .or(Some(20));
+
+        // Dice rolling
+        let roll = Roll::new().roll(DiceKind::Faced, range, times);
+        Json(roll)
+    }
+
+    pub(crate) async fn fate_roll(headers: HeaderMap) -> Json<Vec<RollResult>> {
+        // parse headers and handle defaults
+        let times = headers
+            .get("times")
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.parse::<i32>().ok())
+            .unwrap_or(1);
+
+        // handle rolls
+        let roll_vec: Vec<RollResult> = (1..=times)
+            .map(|_| {
+                info!("Rolling fate dice {} times.", times);
+                Roll::new().roll(DiceKind::Fate, None, None)
+            })
+            .collect();
+        Json(roll_vec)
+    }
 }
 
+// Generates the menu for the root endpoint of the module.
 impl Menu {
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         let actions: Vec<Action> = vec![
-            Action::new("Roll for FATE Dices", "fate"),
-            Action::new("Roll for Faced Dices (D20, D12...)", "faced"),
+            Action::new("Application Menu", "", ("get", "menu_routes")),
+            Action::new("Roll for FATE Dices", "fate", ("post", "fate_roll")),
+            Action::new(
+                "Roll for Faced Dices (D20, D12...)",
+                "faced",
+                ("post", "faced_roll"),
+            ),
         ];
         Menu { actions }
     }
 }
 
+/// Returns a JSON containing the Route Options
 pub(crate) async fn menu_routes() -> Json<serde_json::Value> {
     let menu = Menu::new();
     Json(json!(menu))
-
-    // Retornar um JSON com as rotas do /dice
 }
+
+// TODO: Implement a way to dynamically generate all routing,
+// with their respective handlers and paths.
+//
+// pub(crate) async fn create_route(action: &[Action]) -> Router {
+//     let router = Router::new();
+//     let routes = action.iter().map(|action| {
+//         let f = match &action.method.0.to_uppercase()[..] {
+//             "GET" => router.route(&action.path.as_str(), get(||-> impl fn action.method.1() )),
+//             _ => panic!()
+//         };
+//     }).collect();
+//         routes
+// }
