@@ -12,6 +12,7 @@ mod character;
 mod chat;
 mod dice;
 use log::{error, info, LevelFilter};
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() {
@@ -27,6 +28,12 @@ async fn main() {
         .route("/chat/msg", post(chat::api::send_message))
         .route("/chat/leave", post(chat::api::leave))
         .route("/chat/roll", post(chat::api::chat_roll))
+        .layer(
+            CorsLayer::new()
+                .allow_headers(Any)
+                .allow_methods(Any)
+                .allow_origin(Any),
+        )
         .with_state(chat_state);
 
     println!("Server started on http://localhost:3030");
