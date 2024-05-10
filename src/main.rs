@@ -25,6 +25,7 @@ async fn main() {
         .route("/dice/fate", post(dice::Action::fate_roll))
         .route("/chat/join", post(chat::api::join))
         .route("/chat/msg", post(chat::api::send_message))
+        .route("/chat/leave", post(chat::api::leave))
         .with_state(chat_state);
 
     println!("Server started on http://localhost:3030");

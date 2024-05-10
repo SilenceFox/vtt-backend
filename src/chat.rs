@@ -201,8 +201,10 @@ pub mod api {
     use axum::{extract::State, Json};
     use serde_json::{json, Value};
 
+    #[derive(Debug, Serialize, Deserialize)]
     pub(crate) enum Errors {
         InvalidUsername,
+        InvalidRequest,
     }
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -211,40 +213,85 @@ pub mod api {
         username: String,
     }
 
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct Response {
+        message: String,
+        error: Option<Errors>,
+    }
+
     // Join the chat with axum
     pub(crate) async fn join(
         State(chat): State<Arc<Mutex<Chat>>>,
         Json(req): Json<String>,
-    ) -> Json<String> {
+    ) -> Json<Response> {
         // Check username for invalid characters
         let user = req.trim();
         join_helper(user, &chat);
 
-        let json = Json("Request received".to_string());
+        let response = Response {
+            message: String::from("You have joined"),
+            error: None,
+        };
+        let json = Json(response);
         json
     }
 
     pub(crate) async fn send_message(
         chat: State<Arc<Mutex<Chat>>>,
         Json(req): Json<SendMessageRequest>,
-    ) -> Json<String> {
+    ) -> Json<Response> {
+        // Destructure the data from the request
         let msg = req.message;
         let usr = req.username;
-        // println!("{}: {}", usr, msg);
+        // println!("{}: {}", usr, msg); // Debugging
 
+        // Get MutexGuard for Chat
         let mut guard_chat = chat.lock().unwrap();
 
+        // If user does not exists, add the new user
         if !guard_chat.check_user_exists(&usr) {
-            // If the user exists, get the user and send the message
+            info!(
+                "Fallback activated, something is not right. User: {} not found",
+                &usr
+            );
+            // HACK: The reason behind this is a fallback to avoid unwrap, ideally there would be no way
+            // to a non existent user to send a message, thats why its a hack.
             guard_chat.user_join(&User::new_user(&usr));
         }
+
+        // Gets an existing user from `Chat` and sends a message in his name
         let my_usr = guard_chat.get_your_user(&usr).unwrap().clone();
         guard_chat.send_msg(&my_usr, &msg);
-        guard_chat.get_last_message();
-        Json("Message Sent".to_string())
+        guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
+
+        let response = Response {
+            message: String::from(format!("{} sent a message", usr)),
+            error: None,
+        };
+        Json(response)
     }
 
-    async fn leave(Json(req): Json<User>, chat: State<&Arc<Mutex<Chat>>>) -> Result<(), Errors> {
-        todo!()
+    pub(crate) async fn leave(
+        State(chat): State<Arc<Mutex<Chat>>>,
+        Json(req): Json<String>,
+    ) -> Json<Response> {
+        // Get the lock and parse the user
+        let mut guard_chat = chat.lock().unwrap();
+        let user = req.trim();
+        let user_arc = guard_chat.get_your_user(&user).cloned();
+        // now we validate if this user exists
+        if let Some(user_arc) = user_arc {
+            guard_chat.user_leave(&user_arc);
+            Json(Response {
+                message: String::from(format!("User: {} left", user)),
+                error: None,
+            })
+        } else {
+            error!("Non-existing user tried to leave the chat");
+            Json(Response {
+                message: String::from(format!("ERROR: User {} was not found", user)),
+                error: Some(Errors::InvalidUsername),
+            })
+        }
     }
 }
