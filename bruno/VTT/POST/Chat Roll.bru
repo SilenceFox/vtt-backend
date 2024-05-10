@@ -1,0 +1,19 @@
+meta {
+  name: Chat Roll
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://localhost:3030/chat/roll
+  body: json
+  auth: none
+}
+
+body:json {
+  { "title": "My First Roll",
+   "description": "This is a test roll",
+   "dice": "faced",
+   "username": "Joao"
+  }
+}

@@ -1,0 +1,18 @@
+meta {
+  name: New Message
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3030/chat/msg
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "username": "Joao",
+    "message": "Isso é uma mensagem"
+  }
+}

@@ -1,0 +1,16 @@
+meta {
+  name: Roll dice and overflow
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:3030/dice/faced
+  body: none
+  auth: none
+}
+
+headers {
+  range: 12
+  times: 200
+}

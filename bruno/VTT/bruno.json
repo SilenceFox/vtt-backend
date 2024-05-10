@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "VTT",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
