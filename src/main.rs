@@ -26,6 +26,7 @@ async fn main() {
         .route("/chat/join", post(chat::api::join))
         .route("/chat/msg", post(chat::api::send_message))
         .route("/chat/leave", post(chat::api::leave))
+        .route("/chat/roll", post(chat::api::chat_roll))
         .with_state(chat_state);
 
     println!("Server started on http://localhost:3030");

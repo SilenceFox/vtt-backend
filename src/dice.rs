@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use axum::{
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
@@ -77,7 +78,7 @@ impl Action {
         }
     }
 
-    pub(crate) async fn faced_roll(headers: HeaderMap) -> Json<RollResult> {
+    pub(crate) async fn faced_roll(headers: HeaderMap) -> impl IntoResponse {
         // How many times to roll
         let times = headers
             .get("times")
@@ -94,7 +95,7 @@ impl Action {
 
         // Dice rolling
         let roll = Roll::new().roll(DiceKind::Faced, range, times);
-        Json(roll)
+        (StatusCode::NOT_FOUND, Json(roll))
     }
 
     pub(crate) async fn fate_roll(headers: HeaderMap) -> Json<Vec<RollResult>> {
