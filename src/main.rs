@@ -18,9 +18,8 @@ async fn main() {
     let chat_state = Arc::new(Mutex::new(chat::Chat::new()));
 
     let app = Router::new()
-        .route("/dice", get(dice::menu_routes))
-        .route("/dice/faced", post(dice::Action::faced_roll))
-        .route("/dice/fate", post(dice::Action::fate_roll))
+        .route("/dice/faced", post(dice::api::faced_roll))
+        .route("/dice/fate", post(dice::api::fate_roll))
         .route("/chat/history", get(chat::api::get_chat))
         .route("/chat/join", post(chat::api::join))
         .route("/chat/msg", post(chat::api::send_message))
