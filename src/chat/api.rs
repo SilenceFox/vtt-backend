@@ -151,6 +151,11 @@ pub async fn chat_roll(
     Json(output)
 }
 
+#[derive(Deserialize, Debug, Serialize)]
+pub struct Messages {
+    messages: Vec<Message>,
+}
+
 pub async fn get_chat(
     State(chat): State<Arc<Mutex<Chat>>>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
@@ -162,5 +167,6 @@ pub async fn get_chat(
     } else {
         info!("Chat request parsed successfully.");
         Ok((StatusCode::OK, Json(history)))
+        Ok((StatusCode::OK, Json(Messages { messages: history })))
     }
 }

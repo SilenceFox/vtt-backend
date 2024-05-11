@@ -19,6 +19,7 @@ pub(crate) struct Chat {
 pub(crate) struct User {
     username: String,
 }
+pub(crate) struct User(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Message {
@@ -45,6 +46,7 @@ impl Chat {
         self.users
             .iter()
             .any(|user| user.username == username.trim())
+        self.users.iter().any(|user| user.0 == username.trim())
     }
 
     fn user_join(&mut self, new_user: &Arc<User>) {
@@ -55,6 +57,8 @@ impl Chat {
         // Checks if the given user is in the chat and removes him
         info!("{} has left the chat.", removed_user.username);
         self.users.retain(|x| x.username != removed_user.username)
+        info!("{} has left the chat.", removed_user.0);
+        self.users.retain(|x| x.0 != removed_user.0)
     }
 
     fn add_to_history(&mut self, msg: Message) {
@@ -62,12 +66,14 @@ impl Chat {
     }
 
     fn get_history(&self) -> Vec<Message> {
+    fn get_history(&self) -> &Vec<Message> {
         // Get the entire history of messages in chronological order, first to last
         let mut result: Vec<Message> = vec![];
         for msg in &self.messages {
             result.push(msg.clone())
         }
         result
+        &self.messages
     }
 
     // fn get_history(&self) {
@@ -116,6 +122,7 @@ impl Chat {
             info!("Users currently in the chat:");
             for user in self.users.iter() {
                 info!("{}", user.username);
+                info!("{}", user.0);
             }
             info!("End of list of users");
         }
@@ -126,6 +133,7 @@ impl Chat {
         self.users
             .iter()
             .find(|user| user.username == username.trim())
+        self.users.iter().find(|user| user.0 == username.trim())
     }
 }
 
@@ -135,12 +143,14 @@ impl User {
         let username = username.trim().to_string();
         info!("New user {} has joined", &username);
         Arc::new(Self { username })
+        Arc::new(Self(username))
     }
 
     /// Consumes the User struct and deletes it
     pub fn delete_user(self) {
         info!("The user {}, has been destroyed", self.username);
         ()
+        info!("The user {}, has been destroyed", self.0);
     }
 }
 
@@ -177,8 +187,10 @@ pub(crate) fn leave_helper(username: &Arc<User>, chat_state: &Arc<Mutex<Chat>>) 
     let mut chat = chat_state.lock().unwrap();
 
     match chat.check_user_exists(&username.username) {
+    match chat.check_user_exists(&username.0) {
         true => chat.user_leave(username),
         false => error!("User: {} does not exist in the chat.", &username.username),
+        false => error!("User: {} does not exist in the chat.", &username.0),
     }
 }
 pub(crate) fn send_message_helper(
@@ -189,15 +201,18 @@ pub(crate) fn send_message_helper(
     let mut chat = chat_state.lock().unwrap();
 
     if !chat.check_user_exists(&username.username) {
+    if !chat.check_user_exists(&username.0) {
         info!("User does not exist in the chat. Creating new user...");
         chat.user_join(username);
         info!("User created: {}", &username.username);
+        info!("User created: {}", &username.0);
     };
 
     info!(
         "Message sent from: {}\nMessage: {}",
         &username.username, &message
     );
+    info!("Message sent from: {}\nMessage: {}", &username.0, &message);
 
     chat.send_msg(username, message)
 }
