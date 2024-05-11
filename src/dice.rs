@@ -2,10 +2,9 @@
 use axum::{
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
+    Json,
 };
-use log::{error, info};
+use log::info;
 use rand::prelude::*;
 use rand::thread_rng as rng;
 use serde::{Deserialize, Serialize};

@@ -2,16 +2,13 @@
 use std::sync::{Arc, Mutex};
 
 use axum::{
-    handler::Handler,
-    http::HeaderMap,
     routing::{get, post},
     Router,
 };
-use chat::{join_helper, leave_helper, send_message_helper, User};
 mod character;
 mod chat;
 mod dice;
-use log::{error, info, LevelFilter};
+use log::{info, LevelFilter};
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
@@ -37,7 +34,7 @@ async fn main() {
         )
         .with_state(chat_state);
 
-    println!("Server started on http://localhost:3030");
+    info!("Server started on http://localhost:3030");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

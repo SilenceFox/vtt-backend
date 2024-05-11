@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 /// This module is focused on the CHAT API endpoint.
-/// TODO: GET chat messages
-/// TODO: GET polling
-/// TODO: POST new messages
+/// DONE: GET chat messages
+/// DONE: GET polling
+/// DONE: POST new messages
 /// DONE: POST Join chat
 
 #[derive(Debug)]
@@ -16,9 +16,6 @@ pub(crate) struct Chat {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct User {
-    username: String,
-}
 pub(crate) struct User(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,9 +40,6 @@ impl Chat {
     }
 
     fn check_user_exists(&self, username: &str) -> bool {
-        self.users
-            .iter()
-            .any(|user| user.username == username.trim())
         self.users.iter().any(|user| user.0 == username.trim())
     }
 
@@ -55,8 +49,6 @@ impl Chat {
 
     fn user_leave(&mut self, removed_user: &Arc<User>) {
         // Checks if the given user is in the chat and removes him
-        info!("{} has left the chat.", removed_user.username);
-        self.users.retain(|x| x.username != removed_user.username)
         info!("{} has left the chat.", removed_user.0);
         self.users.retain(|x| x.0 != removed_user.0)
     }
@@ -65,14 +57,8 @@ impl Chat {
         self.messages.push(msg);
     }
 
-    fn get_history(&self) -> Vec<Message> {
     fn get_history(&self) -> &Vec<Message> {
         // Get the entire history of messages in chronological order, first to last
-        let mut result: Vec<Message> = vec![];
-        for msg in &self.messages {
-            result.push(msg.clone())
-        }
-        result
         &self.messages
     }
 
@@ -91,22 +77,20 @@ impl Chat {
     //     println!("╚════════════════════════════╛");
     // }
     fn get_last_message(&self) {
-        match self.messages.last() {
-            Some(msg) => {
-                let bar = "╰──────/MESSAGE-START/────────";
+        if let Some(msg) = self.messages.last() {
+            let bar = "╰──────/MESSAGE-START/────────";
 
-                let formatted = format!(
-                    "│Time: {} \n│ |>{}: \n{}\n{}",
-                    msg.time,
-                    msg.user.username.to_uppercase(),
-                    bar,
-                    msg.message,
-                );
-                println!("╭─────────────────────────────");
-                println!("{formatted}");
-                println!("╰───────/MESSAGE-END/─────────")
-            }
-            None => (),
+            let formatted = format!(
+                "│Time: {} \n│ |>{}: \n{}\n{}",
+                msg.time,
+                msg.user.0.to_uppercase(),
+                bar,
+                msg.message,
+            );
+
+            println!("╭─────────────────────────────");
+            println!("{formatted}");
+            println!("╰───────/MESSAGE-END/─────────")
         }
     }
 
@@ -121,7 +105,6 @@ impl Chat {
         } else {
             info!("Users currently in the chat:");
             for user in self.users.iter() {
-                info!("{}", user.username);
                 info!("{}", user.0);
             }
             info!("End of list of users");
@@ -130,9 +113,6 @@ impl Chat {
     }
 
     pub(crate) fn get_your_user(&self, username: &str) -> Option<&Arc<User>> {
-        self.users
-            .iter()
-            .find(|user| user.username == username.trim())
         self.users.iter().find(|user| user.0 == username.trim())
     }
 }
@@ -142,14 +122,11 @@ impl User {
     pub fn new_user(username: &str) -> Arc<Self> {
         let username = username.trim().to_string();
         info!("New user {} has joined", &username);
-        Arc::new(Self { username })
         Arc::new(Self(username))
     }
 
     /// Consumes the User struct and deletes it
     pub fn delete_user(self) {
-        info!("The user {}, has been destroyed", self.username);
-        ()
         info!("The user {}, has been destroyed", self.0);
     }
 }
@@ -163,19 +140,17 @@ impl Message {
 
         let process_msg = message.trim().to_string();
 
-        let message = Self {
+        Self {
             user,
             time,
             message: process_msg,
-        };
-
-        message
+        }
     }
 }
 
 pub(crate) fn join_helper(username: &str, chat_state: &Arc<Mutex<Chat>>) {
     let mut chat = chat_state.lock().unwrap();
-    if chat.check_user_exists(&username) {
+    if chat.check_user_exists(username) {
         error!("User already exists in the chat");
     } else {
         let new_user = Arc::new(User::new_user(username));
@@ -186,10 +161,8 @@ pub(crate) fn join_helper(username: &str, chat_state: &Arc<Mutex<Chat>>) {
 pub(crate) fn leave_helper(username: &Arc<User>, chat_state: &Arc<Mutex<Chat>>) {
     let mut chat = chat_state.lock().unwrap();
 
-    match chat.check_user_exists(&username.username) {
     match chat.check_user_exists(&username.0) {
         true => chat.user_leave(username),
-        false => error!("User: {} does not exist in the chat.", &username.username),
         false => error!("User: {} does not exist in the chat.", &username.0),
     }
 }
@@ -200,18 +173,12 @@ pub(crate) fn send_message_helper(
 ) {
     let mut chat = chat_state.lock().unwrap();
 
-    if !chat.check_user_exists(&username.username) {
     if !chat.check_user_exists(&username.0) {
         info!("User does not exist in the chat. Creating new user...");
         chat.user_join(username);
-        info!("User created: {}", &username.username);
         info!("User created: {}", &username.0);
     };
 
-    info!(
-        "Message sent from: {}\nMessage: {}",
-        &username.username, &message
-    );
     info!("Message sent from: {}\nMessage: {}", &username.0, &message);
 
     chat.send_msg(username, message)

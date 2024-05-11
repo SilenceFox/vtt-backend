@@ -1,11 +1,6 @@
 use super::*;
-use axum::{
-    extract::State,
-    http::{HeaderMap, HeaderName, StatusCode},
-    response::IntoResponse,
-    Json,
-};
-use serde_json::{json, Value};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use serde_json::json;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Errors {
@@ -35,8 +30,7 @@ pub async fn join(State(chat): State<Arc<Mutex<Chat>>>, Json(req): Json<String>)
         message: String::from("You have joined"),
         error: None,
     };
-    let json = Json(response);
-    json
+    Json(response)
 }
 
 pub async fn send_message(
@@ -68,7 +62,7 @@ pub async fn send_message(
     guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
 
     let response = Response {
-        message: String::from(format!("{} sent a message", usr)),
+        message: format!("{} sent a message", usr),
         error: None,
     };
     Json(response)
@@ -81,18 +75,18 @@ pub async fn leave(
     // Get the lock and parse the user
     let mut guard_chat = chat.lock().unwrap();
     let user = req.trim();
-    let user_arc = guard_chat.get_your_user(&user).cloned();
+    let user_arc = guard_chat.get_your_user(user).cloned();
     // now we validate if this user exists
     if let Some(user_arc) = user_arc {
         guard_chat.user_leave(&user_arc);
         Json(Response {
-            message: String::from(format!("User: {} left", user)),
+            message: format!("User: {} left", user),
             error: None,
         })
     } else {
         error!("Non-existing user tried to leave the chat");
         Json(Response {
-            message: String::from(format!("ERROR: User {} was not found", user)),
+            message: format!("ERROR: User {} was not found", user),
             error: Some(Errors::InvalidUsername),
         })
     }
@@ -159,14 +153,15 @@ pub struct Messages {
 pub async fn get_chat(
     State(chat): State<Arc<Mutex<Chat>>>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let guard_chat = chat.lock().unwrap();
-    let history = guard_chat.get_history().clone();
+    let history = chat.lock().unwrap().get_history().clone();
+
     if history.is_empty() {
         error!("GET on chat resulted on error, chat is empty");
+
         Err((StatusCode::NOT_FOUND, Json("History is empty".to_string())))
     } else {
         info!("Chat request parsed successfully.");
-        Ok((StatusCode::OK, Json(history)))
+
         Ok((StatusCode::OK, Json(Messages { messages: history })))
     }
 }
