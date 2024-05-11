@@ -24,6 +24,7 @@ async fn main() {
         .route("/dice", get(dice::menu_routes))
         .route("/dice/faced", post(dice::Action::faced_roll))
         .route("/dice/fate", post(dice::Action::fate_roll))
+        .route("/chat/history", get(chat::api::get_chat))
         .route("/chat/join", post(chat::api::join))
         .route("/chat/msg", post(chat::api::send_message))
         .route("/chat/leave", post(chat::api::leave))
