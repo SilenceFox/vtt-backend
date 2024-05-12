@@ -1,3 +1,4 @@
 /target
 # bruno/VTT
 src/_todos.rs
+data.db

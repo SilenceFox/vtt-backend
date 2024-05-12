@@ -1,3 +1,5 @@
+use crate::AppState;
+
 use super::*;
 use axum::{extract::State, http::StatusCode, Json};
 use serde_json::json;
@@ -10,15 +12,15 @@ pub struct SendMessageRequest {
 }
 
 // Join the chat with axum
-pub async fn join(State(chat): State<Arc<Mutex<Chat>>>, Json(req): Json<String>) -> impl IR {
+pub async fn join(State(state): State<Arc<AppState>>, Json(req): Json<String>) -> impl IR {
     // Check username for invalid characters
     let user = req.trim();
-    join_helper(user, &chat);
+    join_helper(user, &state.chat);
     Json("You have joined")
 }
 
 pub async fn send_message(
-    chat: State<Arc<Mutex<Chat>>>,
+    state: State<Arc<AppState>>,
     Json(req): Json<SendMessageRequest>,
 ) -> impl IR {
     // Destructure the data from the request
@@ -27,7 +29,7 @@ pub async fn send_message(
     // println!("{}: {}", usr, msg); // Debugging
 
     // Get MutexGuard for Chat
-    let mut guard_chat = chat.lock().unwrap();
+    let mut guard_chat = state.chat.lock().unwrap();
 
     // If user does not exists, add the new user
     if !guard_chat.check_user_exists(&usr) {
@@ -48,9 +50,9 @@ pub async fn send_message(
     Json(format!("{} sent a message", usr))
 }
 
-pub async fn leave(State(chat): State<Arc<Mutex<Chat>>>, Json(req): Json<String>) -> impl IR {
+pub async fn leave(State(state): State<Arc<AppState>>, Json(req): Json<String>) -> impl IR {
     // Get the lock and parse the user
-    let mut guard_chat = chat.lock().unwrap();
+    let mut guard_chat = state.chat.lock().unwrap();
     let user = req.trim();
     let user_arc = guard_chat.get_your_user(user).cloned();
     // now we validate if this user exists
@@ -78,12 +80,11 @@ pub struct RollRequest {
     username: Option<String>,
 }
 pub async fn chat_roll(
-    State(chat): State<Arc<Mutex<Chat>>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<RollRequest>,
 ) -> impl IR {
     // Deconstruct the request into usable variables
     let dice_kind = get_dice(&request).unwrap();
-    let mut guard_chat = chat.lock().unwrap();
 
     let range = request.range.or(Some(20));
     let times = request.times.or(Some(1)); // should be per dice
@@ -98,8 +99,10 @@ pub async fn chat_roll(
     };
 
     // NOTE: This will assume you already have a existing user, will crash otherwise
-    let user_arc = get_user_arc(&chat, &user.as_ref().unwrap());
+    let user_arc = get_user_arc(&state.chat, &user.as_ref().unwrap());
     let output = format!("User: {} rolled: {}", &user.unwrap(), &result.to_string());
+
+    let mut guard_chat = state.chat.lock().unwrap();
     guard_chat.send_msg(&user_arc, &output);
     guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
     Json(output)
@@ -136,8 +139,8 @@ pub struct Messages {
     messages: Vec<Message>,
 }
 
-pub async fn get_chat(State(chat): State<Arc<Mutex<Chat>>>) -> Result<impl IR, Rejection> {
-    let history = chat.lock().unwrap().get_history().clone();
+pub async fn get_chat(State(state): State<Arc<AppState>>) -> Result<impl IR, Rejection> {
+    let history = state.chat.lock().unwrap().get_history().clone();
 
     if history.is_empty() {
         error!("GET on chat resulted on error, chat is empty");
