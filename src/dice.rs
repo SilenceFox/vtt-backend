@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 use axum::{
     http::{HeaderMap, StatusCode},
-    response::IntoResponse,
     Json,
 };
 use log::{error, info};
 use rand::prelude::*;
 use rand::thread_rng as rng;
 use serde::{Deserialize, Serialize};
+use vtt_baxum::errors::*;
 
 pub mod api;
 

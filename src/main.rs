@@ -8,11 +8,12 @@ use axum::{
 mod character;
 mod chat;
 mod dice;
+use anyhow::Result;
 use log::{info, LevelFilter};
 use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     env_logger::builder().filter_level(LevelFilter::Info).init();
 
     let chat_state = Arc::new(Mutex::new(chat::Chat::new()));
@@ -38,6 +39,7 @@ async fn main() {
     info!("Server started on http://localhost:3030");
     info!("Press Ctrl+C to stop the server");
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await?;
+    axum::serve(listener, app).await?;
+    Ok(())
 }

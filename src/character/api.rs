@@ -1,15 +1,13 @@
-use axum::{
-    extract::{FromRequest, Json},
-    http::{HeaderMap, StatusCode},
-    response::IntoResponse as IR,
-};
-type Re<T, E> = Result<T, E>;
-
 use super::*;
+use axum::{
+    extract::Json,
+    http::{HeaderMap, StatusCode},
+};
+use vtt_baxum::errors::*;
 
 /// The handler for exporting the entire character sheet to JSON.
 /// This has zero security, anyone can export your sheet.
-pub async fn export_sheet(user: HeaderMap) -> Re<impl IR, impl IR> {
+pub async fn export_sheet(user: HeaderMap) -> Result<impl IR, Rejection> {
     if let Some(validated) = get_headers(&user, "user") {
         let owner = super::super::chat::User::new_user("Teste");
         let sheet = super::Sheet {
@@ -17,23 +15,23 @@ pub async fn export_sheet(user: HeaderMap) -> Re<impl IR, impl IR> {
             owner,
             fatepoints: (3, 3),
         };
-        Ok((StatusCode::OK, Json(sheet)))
+        Ok(Json(sheet))
     } else {
         error!("Failed to validate user");
         Err((
             StatusCode::NON_AUTHORITATIVE_INFORMATION,
-            Json("You are not authorized to do that"),
+            Json("You are not authorized to do that".to_string()),
         ))
     }
 }
 
-pub async fn import_sheet(Json(payload): Json<Sheet>) -> Re<impl IR, impl IR> {
+pub async fn import_sheet(Json(payload): Json<Sheet>) -> Result<impl IR, Rejection> {
     // Here we handle importing a sheet from a request
     // We presume that its coming from a previous export
     if payload.owner.get_username() == "Joao" {
         println!("User is: Joao");
 
-        Ok((StatusCode::OK, Json(payload.fatepoints)))
+        Ok(Json(payload.fatepoints))
     } else {
         println!("Woo");
         Err((

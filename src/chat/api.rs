@@ -1,6 +1,7 @@
 use super::*;
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::State, http::StatusCode, Json};
 use serde_json::json;
+use vtt_baxum::errors::*;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SendMessageRequest {
@@ -9,20 +10,17 @@ pub struct SendMessageRequest {
 }
 
 // Join the chat with axum
-pub async fn join(
-    State(chat): State<Arc<Mutex<Chat>>>,
-    Json(req): Json<String>,
-) -> impl IntoResponse {
+pub async fn join(State(chat): State<Arc<Mutex<Chat>>>, Json(req): Json<String>) -> impl IR {
     // Check username for invalid characters
     let user = req.trim();
     join_helper(user, &chat);
-    (StatusCode::OK, Json("You have joined"))
+    Json("You have joined")
 }
 
 pub async fn send_message(
     chat: State<Arc<Mutex<Chat>>>,
     Json(req): Json<SendMessageRequest>,
-) -> impl IntoResponse {
+) -> impl IR {
     // Destructure the data from the request
     let msg = req.message;
     let usr = req.username;
@@ -47,13 +45,10 @@ pub async fn send_message(
     guard_chat.send_msg(&my_usr, &msg);
     guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
 
-    (StatusCode::OK, Json(format!("{} sent a message", usr)))
+    Json(format!("{} sent a message", usr))
 }
 
-pub async fn leave(
-    State(chat): State<Arc<Mutex<Chat>>>,
-    Json(req): Json<String>,
-) -> impl IntoResponse {
+pub async fn leave(State(chat): State<Arc<Mutex<Chat>>>, Json(req): Json<String>) -> impl IR {
     // Get the lock and parse the user
     let mut guard_chat = chat.lock().unwrap();
     let user = req.trim();
@@ -61,14 +56,14 @@ pub async fn leave(
     // now we validate if this user exists
     if let Some(user_arc) = user_arc {
         guard_chat.user_leave(&user_arc);
-        (StatusCode::OK, Json(format!("User: {} left", user)))
+        Ok(Json(format!("User: {} left", user)))
     } else {
         error!("Non-existing user tried to leave the chat");
 
-        (
+        Err((
             StatusCode::NOT_FOUND,
             Json(format!("ERROR: User {} was not found", user)),
-        )
+        ))
     }
 }
 #[derive(Debug, Serialize, Deserialize)]
@@ -85,7 +80,7 @@ pub struct RollRequest {
 pub async fn chat_roll(
     State(chat): State<Arc<Mutex<Chat>>>,
     Json(request): Json<RollRequest>,
-) -> impl IntoResponse {
+) -> impl IR {
     // Deconstruct the request into usable variables
     let dice_kind = get_dice(&request).unwrap();
     let mut guard_chat = chat.lock().unwrap();
@@ -107,7 +102,7 @@ pub async fn chat_roll(
     let output = format!("User: {} rolled: {}", &user.unwrap(), &result.to_string());
     guard_chat.send_msg(&user_arc, &output);
     guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
-    (StatusCode::OK, Json(output))
+    Json(output)
 }
 
 /// If this function fails, the user will be defaulted to fate
@@ -141,9 +136,7 @@ pub struct Messages {
     messages: Vec<Message>,
 }
 
-pub async fn get_chat(
-    State(chat): State<Arc<Mutex<Chat>>>,
-) -> Result<impl IntoResponse, impl IntoResponse> {
+pub async fn get_chat(State(chat): State<Arc<Mutex<Chat>>>) -> Result<impl IR, Rejection> {
     let history = chat.lock().unwrap().get_history().clone();
 
     if history.is_empty() {
@@ -153,6 +146,6 @@ pub async fn get_chat(
     } else {
         info!("Chat request parsed successfully.");
 
-        Ok((StatusCode::OK, Json(Messages { messages: history })))
+        Ok(Json(Messages { messages: history }))
     }
 }
