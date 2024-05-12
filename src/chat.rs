@@ -129,6 +129,9 @@ impl User {
     pub fn delete_user(self) {
         info!("The user {}, has been destroyed", self.0);
     }
+    pub fn get_username(&self) -> &str {
+        self.0.as_str()
+    }
 }
 
 impl Message {

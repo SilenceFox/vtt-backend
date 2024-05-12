@@ -20,6 +20,8 @@ async fn main() {
     let app = Router::new()
         .route("/dice/faced", post(dice::api::faced_roll))
         .route("/dice/fate", post(dice::api::fate_roll))
+        .route("/character/export", post(character::api::export_sheet))
+        .route("/character/import", post(character::api::import_sheet))
         .route("/chat/history", get(chat::api::get_chat))
         .route("/chat/join", post(chat::api::join))
         .route("/chat/msg", post(chat::api::send_message))
@@ -34,6 +36,8 @@ async fn main() {
         .with_state(chat_state);
 
     info!("Server started on http://localhost:3030");
+    info!("Press Ctrl+C to stop the server");
+
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3030").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
