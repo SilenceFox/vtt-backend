@@ -135,9 +135,7 @@ fn get_dice(cx: &RollRequest) -> Result<crate::dice::DiceKind, String> {
 }
 
 #[derive(Deserialize, Debug, Serialize)]
-pub struct Messages {
-    messages: Vec<Message>,
-}
+pub struct Messages(Vec<Message>);
 
 pub async fn get_chat(State(state): State<Arc<AppState>>) -> Result<impl IR, Rejection> {
     let history = state.chat.lock().unwrap().get_history().clone();
@@ -149,6 +147,6 @@ pub async fn get_chat(State(state): State<Arc<AppState>>) -> Result<impl IR, Rej
     } else {
         info!("Chat request parsed successfully.");
 
-        Ok(Json(Messages { messages: history }))
+        Ok(Json(Messages(history)))
     }
 }
