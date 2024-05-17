@@ -17,13 +17,13 @@ pub struct Sheet {
     fatepoints: (i32, u8),
     // skills: skills::Skills,
     // TODO: Roll skills
-    // TODO: Aspects
-    // TODO: Stunts (May interact with aspects)
+    // TODO: Aspects Vec<Title, Desc, OptionalRoll>
+    // TODO: Stunts (May interact with aspects) OptionImage
     // TODO: Extras
+    // TODO: stress(bool, bool, bool, bool, bool)
     // TODO: Consequences (Depends on STRESS)
-    // TODO: Stress
     // TODO: Inventory (Layers)
-    // TODO: Trais (Kind of temporary aspects)
+    // TODO: Traits (Kind of temporary aspects)
 }
 
 // TODO: Character sheet methods
@@ -48,6 +48,7 @@ impl Sheet {
     }
 }
 
+//
 // TODO: Character sheet chat integration
 // TODO: Character sheet and "scenario" integration
 // TODO: Character sheet and dice integration

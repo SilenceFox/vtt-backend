@@ -45,7 +45,7 @@ pub async fn send_message(
     // Gets an existing user from `Chat` and sends a message in his name
     let my_usr = guard_chat.get_your_user(&usr).unwrap().clone();
     guard_chat.send_msg(&my_usr, &msg);
-    guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
+    guard_chat.get_last_message(false); // NOTE: Mostly debug until stabilized
 
     Json(format!("{} sent a message", usr))
 }
@@ -104,7 +104,7 @@ pub async fn chat_roll(
 
     let mut guard_chat = state.chat.lock().unwrap();
     guard_chat.send_msg(&user_arc, &output);
-    guard_chat.get_last_message(); // NOTE: Mostly debug until stabilized
+    guard_chat.get_last_message(false); // NOTE: Mostly debug until stabilized
     Json(output)
 }
 

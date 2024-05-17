@@ -1,0 +1,22 @@
+meta {
+  name: test
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:3030/character/save
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Jorginho",
+    "owner": "Jorge",
+    "fatepoints": [
+      3,
+      3
+    ]
+  }
+}

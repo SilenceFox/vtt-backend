@@ -1,8 +1,13 @@
+use crate::AppState;
+
 use super::*;
+use anyhow::anyhow;
 use axum::{
-    extract::Json,
+    extract::{Json, State},
     http::{HeaderMap, StatusCode},
 };
+use rusqlite::params;
+use serde_json::Value;
 use vtt_baxum::errors::*;
 
 /// The handler for exporting the entire character sheet to JSON.
@@ -30,7 +35,6 @@ pub async fn import_sheet(Json(payload): Json<Sheet>) -> Result<impl IR, Rejecti
     // We presume that its coming from a previous export
     if payload.owner.get_username() == "Joao" {
         println!("User is: Joao");
-
         Ok(Json(payload.fatepoints))
     } else {
         println!("Woo");
@@ -39,6 +43,61 @@ pub async fn import_sheet(Json(payload): Json<Sheet>) -> Result<impl IR, Rejecti
             Json("Missing credentials".to_string()),
         ))
     }
+}
+
+pub async fn save_sheet_on_server(
+    State(state): State<Arc<AppState>>,
+    Json(sheet): Json<super::Sheet>,
+) -> Result<impl IR, Rejection> {
+    if sheet.owner.get_username().is_empty() {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json("Ownership rejected.".to_string()),
+        ));
+    }
+
+    // Serialize sheet data to JSON
+    let sheet_data = serde_json::to_string(&sheet).unwrap();
+    let username = &sheet.owner.get_username();
+
+    // Insert the data
+    {
+        let db = state.db.lock().await;
+        db.execute(
+            "INSERT INTO sheets (owner, sheet_data) VALUES (?1, ?2)",
+            params![username, sheet_data],
+        )
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(format!("Failed to save sheet: {}", e)),
+            )
+        })?;
+    }
+
+    Ok(Json("Successfully saved sheet").to_string())
+}
+
+// async fn db_get_sheet(State(db): State<Arc<AppState>>, owner: &str) -> Option<String> {
+//     let db = db.db.lock().await;
+//
+//     // Prepare and execute a SELECT statement to retrieve the sheet_data for the given owner
+//     let mut stmt = db
+//         .prepare("SELECT sheet_data FROM sheets WHERE owner = ?1")
+//         .unwrap();
+//     let mut rows = stmt.query(params![owner]).unwrap();
+//
+//     // If a row is found, return the sheet_data as a String
+//     if let Some(row) = rows.next().unwrap() {
+//         let sheet_data: String = row.get(0).unwrap();
+//         Some(sheet_data)
+//     } else {
+//         // If no row is found, return None
+//         None
+//     }
+// }
+fn db_remove_sheet() {
+    todo!()
 }
 
 /// Will just crash if no headers match

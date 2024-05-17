@@ -61,36 +61,22 @@ impl Chat {
         // Get the entire history of messages in chronological order, first to last
         &self.messages
     }
-
-    // fn get_history(&self) {
-    //     // TODO: Truncate the history to 50 messages
-    //     for msg in &self.messages {
-    //         println!("╠════════════════════════════╕");
-    //         let formatted = format!(
-    //             "║Time: {} \n║ |>{}: {}",
-    //             msg.time,
-    //             msg.user.username.to_uppercase(),
-    //             msg.message,
-    //         );
-    //         println!("{formatted}")
-    //     }
-    //     println!("╚════════════════════════════╛");
-    // }
-    fn get_last_message(&self) {
+    fn get_last_message(&self, format: bool) {
         if let Some(msg) = self.messages.last() {
-            let bar = "╰──────/MESSAGE-START/────────";
+            if format {
+                let bar = "╰──────/MESSAGE-START/────────";
 
-            let formatted = format!(
-                "│Time: {} \n│ |>{}: \n{}\n{}",
-                msg.time,
-                msg.user.0.to_uppercase(),
-                bar,
-                msg.message,
-            );
-
-            println!("╭─────────────────────────────");
-            println!("{formatted}");
-            println!("╰───────/MESSAGE-END/─────────")
+                let formatted = format!(
+                    "│Time: {} \n│ |>{}: \n{}\n{}",
+                    msg.time,
+                    msg.user.0.to_uppercase(),
+                    bar,
+                    msg.message,
+                );
+                println!("╭─────────────────────────────");
+                println!("{formatted}");
+                println!("╰───────/MESSAGE-END/─────────")
+            }
         }
     }
 
@@ -138,7 +124,7 @@ impl Message {
     pub fn new_message(user: Arc<User>, message: &str) -> Self {
         let time = Utc::now()
             .with_timezone(&chrono_tz::America::Sao_Paulo)
-            .format("%d/%m [%H:%M:%S]")
+            .format("[%H:%M:%S]<|>[%d/%m]")
             .to_string();
 
         let process_msg = message.trim().to_string();
