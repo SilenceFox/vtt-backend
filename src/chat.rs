@@ -21,9 +21,16 @@ pub(crate) struct User(String);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct Message {
     user: Arc<User>,
-    time: String,
+    clock: Clock,
     message: String,
 }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+/// With this struct anyone receiving messages can iterate over fields easily.
+pub(crate) struct Clock {
+    time: (i32,i32,i32), // Hour, minute, second
+    date: (i32,i32,i32) // Day, Month, Year
+}
+
 // macro_rules! msg {
 //     ($user:expr, $message:expr) => {{
 //         super::chat.send_message(&$user, $message.to_string())
@@ -67,8 +74,9 @@ impl Chat {
                 let bar = "╰──────/MESSAGE-START/────────";
 
                 let formatted = format!(
-                    "│Time: {} \n│ |>{}: \n{}\n{}",
-                    msg.time,
+                    "│Time: {}:{} \n│ |>{}: \n{}\n{}",
+                    &msg.clock.time.0,
+                    &msg.clock.time.1,
                     msg.user.0.to_uppercase(),
                     bar,
                     msg.message,
@@ -122,16 +130,34 @@ impl User {
 
 impl Message {
     pub fn new_message(user: Arc<User>, message: &str) -> Self {
+        // When a new message is generated this will immediately mark the time.
         let time = Utc::now()
             .with_timezone(&chrono_tz::America::Sao_Paulo)
-            .format("[%H:%M:%S]<|>[%d/%m]")
+            .format("%H:%M:%S|%d/%m/%Y")
             .to_string();
 
+        // the clock gets built
+        // TODO: Remove unwraps()
+        let parts: Vec<&str> = time.split('|').collect();
+        let time_parts: Vec<i32> = parts[0].split(':')
+            .map(|part| part.parse().unwrap())
+            .collect();
+        let date_parts: Vec<i32> = parts[1].split('/')
+            .map(|part| part.parse().unwrap())
+            .collect();
+
+        // Compile the Clock into one struct and construct the final msg
+        let clock = Clock {
+            time: (time_parts[0], time_parts[1], time_parts[2]),
+            date: (date_parts[0], date_parts[1], date_parts[2]),
+        };
+
+        // TODO: Filter out non-UTF8
         let process_msg = message.trim().to_string();
 
         Self {
             user,
-            time,
+            clock,
             message: process_msg,
         }
     }

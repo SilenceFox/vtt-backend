@@ -145,7 +145,7 @@ pub async fn get_chat(State(state): State<Arc<AppState>>) -> Result<impl IR, Rej
 
         Err((StatusCode::NOT_FOUND, Json("History is empty".to_string())))
     } else {
-        info!("Chat request parsed successfully.");
+        // info!("Chat request parsed successfully."); //Debugging only
 
         Ok(Json(Messages(history)))
     }
